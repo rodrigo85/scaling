@@ -4,3 +4,4 @@ __pycache__/
 *.tfstate*
 .terraform.lock.hcl
 /results/*.csv
+*:Zone.Identifier
