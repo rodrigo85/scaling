@@ -1,0 +1,6 @@
+/secrets/
+__pycache__/
+.terraform/
+*.tfstate*
+.terraform.lock.hcl
+/results/*.csv

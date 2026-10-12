@@ -1,0 +1,68 @@
+name: scaling-lab
+
+services:
+  localstack:
+    container_name: scaling-localstack
+    image: localstack/localstack:3.8
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4566:4566"
+    environment:
+      - SERVICES=s3,sqs
+      - AWS_DEFAULT_REGION=us-east-1
+      - PERSISTENCE=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  sqs-exporter:
+    container_name: scaling-sqs-exporter
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: scaling-app:latest
+    restart: unless-stopped
+    command: ["python", "exporter.py"]
+    environment:
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - EXPORTER_PORT=9190
+      - TOKEN_FILE=/app/secrets/k8s-token.txt
+    volumes:
+      - ../secrets:/app/secrets:ro
+    depends_on:
+      - localstack
+
+  prometheus:
+    container_name: scaling-prometheus
+    image: prom/prometheus:v2.54.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9091:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    depends_on:
+      - sqs-exporter
+
+  grafana:
+    container_name: scaling-grafana
+    image: grafana/grafana:11.2.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus

@@ -1,0 +1,28 @@
+# Read-only identity for the Prometheus exporter (src/exporter.py): list pods and nodes.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scaling-exporter
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scaling-exporter
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: scaling-exporter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: scaling-exporter
+subjects:
+  - kind: ServiceAccount
+    name: scaling-exporter
+    namespace: default

@@ -1,0 +1,53 @@
+# LocalStack accepts any credentials. KEDA's TriggerAuthentication also reads this Secret.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-secrets
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: "mock_access_key"
+  AWS_SECRET_ACCESS_KEY: "mock_secret_key"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  labels:
+    app: worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      terminationGracePeriodSeconds: 15
+      containers:
+        - name: consumer
+          image: scaling-app:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - secretRef:
+                name: aws-secrets
+          env:
+            - name: AWS_ENDPOINT_URL
+              value: "http://scaling-localstack:4566"
+            - name: AWS_DEFAULT_REGION
+              value: "us-east-1"
+            - name: METRICS_PORT
+              value: "8000"
+            - name: BATCH_SIZE
+              value: "10"
+          ports:
+            - containerPort: 8000
+              name: metrics
+          resources:
+            requests:
+              cpu: "300m"
+              memory: "128Mi"
+            limits:
+              cpu: "800m"
+              memory: "512Mi"

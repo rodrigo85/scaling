@@ -1,0 +1,54 @@
+# Secret aws-secrets lives in consumer-deployment.yaml: deleting this file (scenarios A/C)
+# must not remove the credentials the consumer pods use.
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-aws-credentials
+spec:
+  secretTargetRef:
+    - parameter: awsAccessKeyID
+      name: aws-secrets
+      key: AWS_ACCESS_KEY_ID
+    - parameter: awsSecretAccessKey
+      name: aws-secrets
+      key: AWS_SECRET_ACCESS_KEY
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: consumer-scaler
+spec:
+  scaleTargetRef:
+    name: worker
+  minReplicaCount: 2
+  maxReplicaCount: 40
+  pollingInterval: 2
+  cooldownPeriod: 15
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          selectPolicy: Max
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 10
+            - type: Pods
+              value: 8
+              periodSeconds: 10
+        scaleDown:
+          stabilizationWindowSeconds: 20
+          policies:
+            - type: Percent
+              value: 50
+              periodSeconds: 15
+  triggers:
+    - type: aws-sqs-queue
+      metadata:
+        queueURL: "http://scaling-localstack:4566/000000000000/ingestion-queue"
+        queueLength: "12"
+        awsRegion: "us-east-1"
+        awsEndpoint: "http://scaling-localstack:4566"
+      authenticationRef:
+        name: keda-aws-credentials
