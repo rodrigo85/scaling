@@ -1,4 +1,4 @@
-# Ingestion autoscaling lab
+# Event-Driven Ingestion with Dynamic Autoscaling
 
 Zero-cost simulation of a cloud ingestion pipeline that reacts on its own to a daily load peak:
 the SQS queue fills up, KEDA scales consumer pods out, Karpenter adds nodes when pods go `Pending`,
